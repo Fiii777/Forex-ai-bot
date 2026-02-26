@@ -10,8 +10,8 @@ st.set_page_config(page_title="Pro Forex AI Hub", layout="wide")
 
 # --- 2. โหลด AI แบบประหยัดพลังงาน (โหลดไวขึ้น) ---
 @st.cache_resource
-def load_sentiment_ai():
-    # ใช้โมเดลพื้นฐานที่เบาและเหมาะกับทรัพยากรบน Cloud
+def load_ai():
+    # เปลี่ยนมาใช้ distilbert (ตัวเล็กและโหลดไวกว่ามาก)
     return pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
 analyzer = load_sentiment_ai()
@@ -86,3 +86,4 @@ if news_data:
     st.dataframe(df, use_container_width=True)
 else:
     st.warning("⚠️ ไม่พบข้อมูลข่าวในขณะนี้ กรุณารอสักครู่แล้วกด Refresh อีกครั้ง")
+
