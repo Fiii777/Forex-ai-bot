@@ -10,11 +10,11 @@ st.set_page_config(page_title="Pro Forex AI Hub", layout="wide")
 
 # --- 2. โหลด AI แบบประหยัดพลังงาน ---
 @st.cache_resource
-def load_sentiment_ai(): # <--- ตรวจสอบให้แน่ใจว่าชื่อคือ load_sentiment_ai
-    # ใช้โมเดลพื้นฐานที่เบาและเหมาะกับทรัพยากรบน Cloud
+def load_sentiment_ai(): # <--- ตรวจสอบว่าชื่อฟังก์ชันคือ load_sentiment_ai
+    # ใช้โมเดลพื้นฐานที่เบาและโหลดไว
     return pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
-# เรียกใช้งานฟังก์ชัน (ชื่อต้องตรงกับด้านบน)
+# บรรทัดที่ 17: เรียกใช้ชื่อให้ตรงกับด้านบน
 analyzer = load_sentiment_ai()
 
 # --- 3. ฟังก์ชันดึงข่าวจากหลายแหล่ง (รวม Forex Factory) ---
@@ -87,6 +87,7 @@ if news_data:
     st.dataframe(df, use_container_width=True)
 else:
     st.warning("⚠️ ไม่พบข้อมูลข่าวในขณะนี้ กรุณารอสักครู่แล้วกด Refresh อีกครั้ง")
+
 
 
 
