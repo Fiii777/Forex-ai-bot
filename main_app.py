@@ -23,6 +23,31 @@ telegram_bot = Bot(token=TELEGRAM_TOKEN)
 
 # --- ฟังก์ชันการทำงาน ---
 def fetch_and_analyze():
+    # 1. เพิ่ม URL แหล่งข่าวที่ต้องการลงในลิสต์นี้
+    urls = [
+        "https://www.investing.com/rss/news_285.rss",
+        "https://finance.yahoo.com/news/rssindex",
+        "https://www.dailyfx.com/feeds/forex-market-news"
+    ]
+    
+    all_news = []
+    
+    for url in urls:
+        feed = feedparser.parse(url)
+        for entry in feed.entries[:5]: # ดึงมาแหล่งละ 5 ข่าวล่าสุด
+            # 2. ส่งให้ AI วิเคราะห์ (ใช้โค้ดเดิมที่คุณมี)
+            sentiment = sentiment_pipeline(entry.title)[0]
+            
+            all_news.append({
+                "Time": entry.published if 'published' in entry else "N/A",
+                "Source": url.split('.')[1], # ดึงชื่อเว็บมาโชว์
+                "Headline": entry.title,
+                "Label": sentiment['label'],
+                "Score": round(sentiment['score'], 2)
+            })
+    return all_news
+    
+def fetch_and_analyze():
     rss_url = "https://www.forexfactory.com/news/rss"
     feed = feedparser.parse(rss_url)
     results = []
@@ -150,3 +175,4 @@ else:
     else:
 
         st.error("❌ โครงสร้างข้อมูลไม่ถูกต้อง กรุณารีเฟรชหน้าเว็บอีกครั้ง")
+
