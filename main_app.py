@@ -53,7 +53,54 @@ def get_forex_news():
     except: pass
     
     return results
+# --- ฟังก์ชันวิเคราะห์เจาะจงทองคำ (XAU/USD) ---
+def get_gold_analysis():
+    gold_data = []
+    
+    # 1. ดึงข่าวที่มีคีย์เวิร์ดเกี่ยวกับ Gold, XAU, Fed, Inflation, USD
+    keywords = ['gold', 'xau', 'fed', 'inflation', 'usd', 'fomc', 'interest rate']
+    
+    # ดึงจากแหล่งข่าวหลัก
+    raw_news = get_forex_news() # ใช้ฟังก์ชันเดิมที่คุณมี
+    
+    for news in raw_news:
+        headline_lower = news['Headline'].lower()
+        # กรองเฉพาะข่าวที่เกี่ยวข้องกับทองคำ
+        if any(key in headline_lower for key in keywords):
+            # เพิ่ม Logic วิเคราะห์ผลกระทบต่อทองคำ
+            if news['AI Sentiment'] == 'POSITIVE' and ('usd' not in headline_lower):
+                gold_impact = "🚀 BULLISH FOR GOLD"
+            elif news['AI Sentiment'] == 'NEGATIVE' and ('usd' in headline_lower):
+                gold_impact = "🚀 BULLISH FOR GOLD (USD Weakness)"
+            elif news['AI Sentiment'] == 'POSITIVE' and ('usd' in headline_lower):
+                gold_impact = "📉 BEARISH FOR GOLD (USD Strength)"
+            else:
+                gold_impact = "⚖️ NEUTRAL / VOLATILE"
+                
+            news['Gold Impact'] = gold_impact
+            gold_data.append(news)
+            
+    return gold_data
 
+# --- ส่วนการแสดงผลใหม่บน Dashboard ---
+st.header("✨ XAU/USD Gold Special Analysis")
+gold_news = get_gold_analysis()
+
+if gold_news:
+    gold_df = pd.DataFrame(gold_news)
+    # แสดงเข็มไมล์หรือ Metric สำหรับทองคำโดยเฉพาะ
+    gold_pos = len(gold_df[gold_df['Gold Impact'].str.contains("BULLISH")])
+    gold_neg = len(gold_df[gold_df['Gold Impact'].str.contains("BEARISH")])
+    
+    col1, col2 = st.columns(2)
+    col1.metric("Gold Bullish Signals", gold_pos)
+    col2.metric("Gold Bearish Signals", gold_neg)
+    
+    st.subheader("📊 Gold Focused News Table")
+    st.dataframe(gold_df[['Source', 'Headline', 'AI Sentiment', 'Gold Impact']], use_container_width=True)
+else:
+    st.write("คัดกรองแล้ว ยังไม่มีข่าวที่มีผลกระทบต่อทองคำโดยตรงในขณะนี้")
+    
 # --- 4. การแสดงผล Dashboard ---
 st.title("🌎 Pro Forex AI Intelligence Hub")
 st.info("AI กำลังวิเคราะห์ข่าวเศรษฐกิจแบบ Real-time จากแหล่งข่าวชั้นนำ")
@@ -87,6 +134,7 @@ if news_data:
     st.dataframe(df, use_container_width=True)
 else:
     st.warning("⚠️ ไม่พบข้อมูลข่าวในขณะนี้ กรุณารอสักครู่แล้วกด Refresh อีกครั้ง")
+
 
 
 
