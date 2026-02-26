@@ -8,15 +8,14 @@ from transformers import pipeline
 # --- 1. ตั้งค่าพื้นฐาน (ป้องกันหน้าจอซ้ำ) ---
 st.set_page_config(page_title="Pro Forex AI Hub", layout="wide")
 
-# --- 2. โหลด AI แบบประหยัดพลังงาน (โหลดไวขึ้น) ---
-
+# --- 2. โหลด AI แบบประหยัดพลังงาน ---
 @st.cache_resource
-def load_ai():
+def load_sentiment_ai(): # <--- ตรวจสอบให้แน่ใจว่าชื่อคือ load_sentiment_ai
     # ใช้โมเดลพื้นฐานที่เบาและเหมาะกับทรัพยากรบน Cloud
     return pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
-# เรียกใช้งานฟังก์ชันที่ประกาศไว้ด้านบน
-analyzer = load_ai()
+# เรียกใช้งานฟังก์ชัน (ชื่อต้องตรงกับด้านบน)
+analyzer = load_sentiment_ai()
 
 # --- 3. ฟังก์ชันดึงข่าวจากหลายแหล่ง (รวม Forex Factory) ---
 def get_forex_news():
@@ -88,5 +87,6 @@ if news_data:
     st.dataframe(df, use_container_width=True)
 else:
     st.warning("⚠️ ไม่พบข้อมูลข่าวในขณะนี้ กรุณารอสักครู่แล้วกด Refresh อีกครั้ง")
+
 
 
