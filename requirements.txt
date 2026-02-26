@@ -1,0 +1,7 @@
+streamlit
+feedparser
+transformers
+torch
+pandas
+python-telegram-bot
+requests
