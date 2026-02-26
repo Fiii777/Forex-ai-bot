@@ -5,137 +5,104 @@ import pandas as pd
 import asyncio
 from transformers import pipeline
 
-# --- 1. ตั้งค่าพื้นฐาน (ป้องกันหน้าจอซ้ำ) ---
-st.set_page_config(page_title="Pro Forex AI Hub", layout="wide")
+# --- 1. ตั้งค่าหน้าจอ ---
+st.set_page_config(page_title="Gold AI Specialist Hub", layout="wide", page_icon="🟡")
 
 # --- 2. โหลด AI แบบประหยัดพลังงาน ---
 @st.cache_resource
-def load_sentiment_ai(): # <--- ตรวจสอบว่าชื่อฟังก์ชันคือ load_sentiment_ai
-    # ใช้โมเดลพื้นฐานที่เบาและโหลดไว
+def load_sentiment_ai():
     return pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
-# บรรทัดที่ 17: เรียกใช้ชื่อให้ตรงกับด้านบน
 analyzer = load_sentiment_ai()
 
-# --- 3. ฟังก์ชันดึงข่าวจากหลายแหล่ง (รวม Forex Factory) ---
-def get_forex_news():
+# --- 3. ฟังก์ชันดึงข่าวและวิเคราะห์ผลกระทบ ---
+def get_advanced_forex_news():
     results = []
-    
-    # ดึงจาก Forex Factory (Economic Calendar)
+    # ดึงจาก Forex Factory
     try:
         ff_url = "https://cdn-nfs.forexfactory.net/ff_calendar_thisweek.json"
         ff_res = requests.get(ff_url, timeout=10)
-        for item in ff_res.json()[:7]: # ดึง 7 ข่าวเด่น
+        for item in ff_res.json()[:10]:
             label = analyzer(item['title'])[0]
+            # ให้คะแนนตาม Impact
+            weight = 3 if item['impact'].lower() == 'high' else 2 if item['impact'].lower() == 'medium' else 1
+            
             results.append({
                 "Source": "Forex Factory",
                 "Currency": item['currency'],
                 "Headline": item['title'],
                 "Impact": item['impact'],
-                "AI Sentiment": label['label'],
-                "Confidence": f"{label['score']:.2%}"
+                "Sentiment": label['label'],
+                "Weight": weight,
+                "Score": label['score']
             })
     except: pass
-
-    # ดึงจาก Investing.com (RSS Feed)
-    try:
-        feed = feedparser.parse("https://www.investing.com/rss/news_285.rss")
-        for entry in feed.entries[:5]:
-            label = analyzer(entry.title)[0]
-            results.append({
-                "Source": "Investing.com",
-                "Currency": "ALL",
-                "Headline": entry.title,
-                "Impact": "Medium/High",
-                "AI Sentiment": label['label'],
-                "Confidence": f"{label['score']:.2%}"
-            })
-    except: pass
-    
     return results
-# --- ฟังก์ชันวิเคราะห์เจาะจงทองคำ (XAU/USD) ---
-def get_gold_analysis():
-    gold_data = []
+
+# --- 4. ส่วนวิเคราะห์ทองคำ (XAU/USD) ---
+def analyze_gold_impact(news_data):
+    gold_analysis = []
+    keywords = ['gold', 'xau', 'fed', 'inflation', 'usd', 'fomc', 'interest rate', 'cpi']
     
-    # 1. ดึงข่าวที่มีคีย์เวิร์ดเกี่ยวกับ Gold, XAU, Fed, Inflation, USD
-    keywords = ['gold', 'xau', 'fed', 'inflation', 'usd', 'fomc', 'interest rate']
-    
-    # ดึงจากแหล่งข่าวหลัก
-    raw_news = get_forex_news() # ใช้ฟังก์ชันเดิมที่คุณมี
-    
-    for news in raw_news:
-        headline_lower = news['Headline'].lower()
-        # กรองเฉพาะข่าวที่เกี่ยวข้องกับทองคำ
-        if any(key in headline_lower for key in keywords):
-            # เพิ่ม Logic วิเคราะห์ผลกระทบต่อทองคำ
-            if news['AI Sentiment'] == 'POSITIVE' and ('usd' not in headline_lower):
-                gold_impact = "🚀 BULLISH FOR GOLD"
-            elif news['AI Sentiment'] == 'NEGATIVE' and ('usd' in headline_lower):
-                gold_impact = "🚀 BULLISH FOR GOLD (USD Weakness)"
-            elif news['AI Sentiment'] == 'POSITIVE' and ('usd' in headline_lower):
-                gold_impact = "📉 BEARISH FOR GOLD (USD Strength)"
+    for news in news_data:
+        h_lower = news['Headline'].lower()
+        if any(key in h_lower for key in keywords) or news['Currency'] in ['USD', 'XAU']:
+            # Logic: ทองคำมักสวนทางกับ USD
+            if news['Currency'] == 'USD':
+                if news['Sentiment'] == 'POSITIVE':
+                    g_signal = "📉 BEARISH (USD Strong)"
+                    g_color = "red"
+                else:
+                    g_signal = "🚀 BULLISH (USD Weak)"
+                    g_color = "green"
             else:
-                gold_impact = "⚖️ NEUTRAL / VOLATILE"
-                
-            news['Gold Impact'] = gold_impact
-            gold_data.append(news)
+                g_signal = "🚀 BULLISH" if news['Sentiment'] == 'POSITIVE' else "📉 BEARISH"
+                g_color = "green" if news['Sentiment'] == 'POSITIVE' else "red"
             
-    return gold_data
+            news['Gold_Signal'] = g_signal
+            news['Signal_Color'] = g_color
+            gold_analysis.append(news)
+    return gold_analysis
 
-# --- ส่วนการแสดงผลใหม่บน Dashboard ---
-st.header("✨ XAU/USD Gold Special Analysis")
-gold_news = get_gold_analysis()
+# --- 5. หน้า Dashboard ---
+st.title("🟡 Gold AI Specialist & Forex Intelligence")
+st.markdown("ระบบวิเคราะห์ Sentiment เจาะลึก **ทองคำ (XAU/USD)** และข่าวเศรษฐกิจโลก")
 
-if gold_news:
-    gold_df = pd.DataFrame(gold_news)
-    # แสดงเข็มไมล์หรือ Metric สำหรับทองคำโดยเฉพาะ
-    gold_pos = len(gold_df[gold_df['Gold Impact'].str.contains("BULLISH")])
-    gold_neg = len(gold_df[gold_df['Gold Impact'].str.contains("BEARISH")])
-    
-    col1, col2 = st.columns(2)
-    col1.metric("Gold Bullish Signals", gold_pos)
-    col2.metric("Gold Bearish Signals", gold_neg)
-    
-    st.subheader("📊 Gold Focused News Table")
-    st.dataframe(gold_df[['Source', 'Headline', 'AI Sentiment', 'Gold Impact']], use_container_width=True)
-else:
-    st.write("คัดกรองแล้ว ยังไม่มีข่าวที่มีผลกระทบต่อทองคำโดยตรงในขณะนี้")
-    
-# --- 4. การแสดงผล Dashboard ---
-st.title("🌎 Pro Forex AI Intelligence Hub")
-st.info("AI กำลังวิเคราะห์ข่าวเศรษฐกิจแบบ Real-time จากแหล่งข่าวชั้นนำ")
-
-# ปุ่ม Refresh
-if st.button('🔄 Sync Data & Re-analyze'):
+if st.button('🔄 Sync & Re-Analyze Data'):
     st.cache_data.clear()
 
-# ประมวลผลและแสดงตาราง
-with st.spinner('กำลังประมวลผลข้อมูล...'):
-    news_data = get_forex_news()
+with st.spinner('AI กำลังวิเคราะห์ผลกระทบต่อราคาทองคำ...'):
+    all_news = get_advanced_forex_news()
+    gold_news = analyze_gold_impact(all_news)
 
-if news_data:
-    df = pd.DataFrame(news_data)
+if all_news:
+    # --- ส่วนสรุปทองคำ ---
+    st.subheader("✨ Gold Strategy (XAU/USD Focus)")
+    g_col1, g_col2 = st.columns(2)
     
-    # สรุปภาพรวม (Metrics)
-    c1, c2, c3 = st.columns(3)
-    pos_count = len(df[df['AI Sentiment'] == 'POSITIVE'])
-    neg_count = len(df[df['AI Sentiment'] == 'NEGATIVE'])
+    bullish_pts = sum(n['Weight'] for n in gold_news if "BULLISH" in n['Gold_Signal'])
+    bearish_pts = sum(n['Weight'] for n in gold_news if "BEARISH" in n['Gold_Signal'])
     
-    c1.metric("Bullish News 📈", pos_count)
-    c2.metric("Bearish News 📉", neg_count)
+    g_col1.metric("Gold Bullish Power (Weighted)", bullish_pts)
+    g_col2.metric("Gold Bearish Power (Weighted)", bearish_pts)
     
-    bias = "🚀 STRONG BUY" if pos_count > neg_count else "📉 STRONG SELL" if neg_count > pos_count else "⚖️ NEUTRAL"
-    c3.subheader(f"Overall Bias: {bias}")
+    if bullish_pts > bearish_pts:
+        st.success("### 🚀 Overall Gold Bias: BUY / LONG")
+    elif bearish_pts > bullish_pts:
+        st.error("### 📉 Overall Gold Bias: SELL / SHORT")
+    else:
+        st.warning("### ⚖️ Overall Gold Bias: SIDEWAYS / NEUTRAL")
 
     st.divider()
-    
-    # แสดงตารางสวยงาม
-    st.subheader("📊 รายละเอียดการวิเคราะห์รายข่าว")
-    st.dataframe(df, use_container_width=True)
+
+    # --- ตารางวิเคราะห์ทองคำ ---
+    st.subheader("📊 Gold Focused Analysis")
+    gold_df = pd.DataFrame(gold_news)
+    if not gold_df.empty:
+        st.dataframe(gold_df[['Currency', 'Headline', 'Impact', 'Gold_Signal']], use_container_width=True)
+
+    # --- ตารางข่าวทั้งหมด ---
+    with st.expander("ดูข่าวเศรษฐกิจทั้งหมด"):
+        st.dataframe(pd.DataFrame(all_news), use_container_width=True)
 else:
-    st.warning("⚠️ ไม่พบข้อมูลข่าวในขณะนี้ กรุณารอสักครู่แล้วกด Refresh อีกครั้ง")
-
-
-
-
-
+    st.warning("⚠️ กำลังรอข้อมูลข่าวล่าสุด...")
